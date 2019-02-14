@@ -73,3 +73,8 @@ impl<'a> Sphere<'a> {
         }
     }
 }
+
+pub struct Light<'a> {
+    pub position: &'a Vec3f,
+    pub intensity: f32,
+}

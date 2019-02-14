@@ -3,6 +3,7 @@ use std::io::BufWriter;
 use std::io::Write;
 use std::path::Path;
 mod geometry;
+use geometry::Light;
 use geometry::Sphere;
 use geometry::Vec3f;
 
@@ -34,17 +35,23 @@ fn scene_intersect(
     spheres_dist < 1000.
 }
 
-fn cast_ray(orig: &Vec3f, dir: &Vec3f, spheres: &[Sphere]) -> Vec3f {
+fn cast_ray(orig: &Vec3f, dir: &Vec3f, spheres: &[Sphere], lights: &[Light]) -> Vec3f {
     let mut point: Vec3f = Vec3f(0., 0., 0.);
     let mut N: Vec3f = Vec3f(0., 0., 0.);
     let mut material: Vec3f = Vec3f(0., 0., 0.);
     if !scene_intersect(&orig, &dir, &spheres, &mut point, &mut N, &mut material) {
         return BACKGROUND;
     }
-    return material;
+    let mut diffuse_light_intensity = 0.;
+    for light in lights.iter() {
+        let mut light_dir = light.position - &point;
+        light_dir.normalize();
+        diffuse_light_intensity += light.intensity * (0.0f32).max(&light_dir * &N);
+    }
+    &material * diffuse_light_intensity
 }
 
-fn render(spheres: &[Sphere], framebuffer: &mut [Vec3f]) {
+fn render(spheres: &[Sphere], framebuffer: &mut [Vec3f], lights: &[Light]) {
     for j in 0..HEIGHT {
         for i in 0..WIDTH {
             let x = (2. * (i as f32 + 0.5) / WIDTH as f32 - 1.)
@@ -54,7 +61,7 @@ fn render(spheres: &[Sphere], framebuffer: &mut [Vec3f]) {
             let y = -(2. * (j as f32 + 0.5) / HEIGHT as f32 - 1.) * (FOV as f32 / 2.).tan();
             let mut dir = Vec3f(x, y, -1.);
             dir.normalize();
-            framebuffer[i + j * WIDTH] = cast_ray(&Vec3f(0., 0., 0.), &dir, spheres);
+            framebuffer[i + j * WIDTH] = cast_ray(&Vec3f(0., 0., 0.), &dir, spheres, lights);
         }
     }
 }
@@ -85,7 +92,11 @@ fn main() {
             material: ivory,
         },
     ];
-    render(&spheres, &mut framebuffer);
+    let lights = [Light{
+        position: &Vec3f(-20., 20., 20.),
+        intensity: 1.5,
+    }];
+    render(&spheres, &mut framebuffer, &lights);
     let path = Path::new("./out.ppm");
     let file = File::create(&path).expect("Cannot create out.ppm");
     let mut stream = BufWriter::new(file);
