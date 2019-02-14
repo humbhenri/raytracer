@@ -1,74 +1,95 @@
 use std::fs::File;
 use std::io::BufWriter;
 use std::io::Write;
-use std::ops;
 use std::path::Path;
+mod geometry;
+use geometry::Sphere;
+use geometry::Vec3f;
 
-#[derive(Debug, Clone, Copy)]
-struct Vec3f(f32, f32, f32);
+const WIDTH: usize = 1024;
+const HEIGHT: usize = 768;
+const FOV: usize = (std::f32::consts::PI / 2.) as usize;
+const BACKGROUND: Vec3f = Vec3f(0.2, 0.7, 0.8);
 
-impl ops::Sub for &Vec3f {
-    type Output = Vec3f;
-    fn sub(self, _rhs: &Vec3f) -> Vec3f {
-        let Vec3f(x, y, z) = self;
-        let Vec3f(_x, _y, _z) = _rhs;
-        Vec3f(x - _x, y - _y, z - _z)
+fn scene_intersect(
+    orig: &Vec3f,
+    dir: &Vec3f,
+    spheres: &[Sphere],
+    hit: &mut Vec3f,
+    N: &mut Vec3f,
+    material: &mut Vec3f,
+) -> bool {
+    let mut spheres_dist = std::f32::MAX;
+    for sphere in spheres.iter() {
+        let mut dist_i: &mut f32 = &mut std::f32::MAX;
+        if sphere.ray_intersect(&orig, &dir, &mut dist_i) && *dist_i < spheres_dist {
+            spheres_dist = *dist_i;
+            *hit = &(orig + dir) * *dist_i;
+            *N = &*hit - sphere.center;
+            N.normalize();
+            *material = *sphere.material;
+        }
     }
+
+    spheres_dist < 1000.
 }
 
-impl ops::Mul for &Vec3f {
-    type Output = f32;
-    fn mul(self, _rhs: &Vec3f) -> f32 {
-        let Vec3f(x, y, z) = self;
-        let Vec3f(_x, _y, _z) = _rhs;
-        x * _x + y * _y + z * _z
+fn cast_ray(orig: &Vec3f, dir: &Vec3f, spheres: &[Sphere]) -> Vec3f {
+    let mut point: Vec3f = Vec3f(0., 0., 0.);
+    let mut N: Vec3f = Vec3f(0., 0., 0.);
+    let mut material: Vec3f = Vec3f(0., 0., 0.);
+    if !scene_intersect(&orig, &dir, &spheres, &mut point, &mut N, &mut material) {
+        return BACKGROUND;
     }
+    return material;
 }
 
-struct Sphere<'a> {
-    center: &'a Vec3f,
-    radius: f32,
-}
-
-impl<'a> Sphere<'a> {
-    fn ray_intersect(&self, orig: &Vec3f, dir: &Vec3f, t0: &'a mut f32) -> bool {
-        let L = self.center - orig;
-        let tca = &L * dir;
-        let d2 = &L * &L - tca.powi(2);
-        if d2 > self.radius.powi(2) {
-            return false;
-        } else {
-            let thc = (self.radius.powi(2) - d2).sqrt();
-            *t0 = &tca - thc;
-            let t1 = tca + thc;
-            *t0 = if t0 < &mut 0. { t1 } else { *t0 };
-            t0 >= &mut 0.
+fn render(spheres: &[Sphere], framebuffer: &mut [Vec3f]) {
+    for j in 0..HEIGHT {
+        for i in 0..WIDTH {
+            let x = (2. * (i as f32 + 0.5) / WIDTH as f32 - 1.)
+                * (FOV as f32 / 2.).tan()
+                * (WIDTH as f32)
+                / (HEIGHT as f32);
+            let y = -(2. * (j as f32 + 0.5) / HEIGHT as f32 - 1.) * (FOV as f32 / 2.).tan();
+            let mut dir = Vec3f(x, y, -1.);
+            dir.normalize();
+            framebuffer[i + j * WIDTH] = cast_ray(&Vec3f(0., 0., 0.), &dir, spheres);
         }
     }
 }
 
 fn main() {
-    const WIDTH: usize = 1024;
-    const HEIGHT: usize = 768;
     let mut framebuffer = vec![Vec3f(0., 0., 0.); WIDTH * HEIGHT];
-
-    for j in 0..HEIGHT {
-        for i in 0..WIDTH {
-            let pixel = Vec3f(
-                (j as f32) / (HEIGHT as f32),
-                (i as f32) / (WIDTH as f32),
-                0.,
-            );
-
-            framebuffer[i + j * WIDTH] = pixel;
-        }
-    }
-
+    let ivory = &Vec3f(0.4, 0.4, 0.3);
+    let red_rubber = &Vec3f(0.3, 0.1, 0.1);
+    let spheres = [
+        Sphere {
+            center: &Vec3f(-3., -0., -16.),
+            radius: 2.,
+            material: ivory,
+        },
+        Sphere {
+            center: &Vec3f(-1.0, -1.5, -12.),
+            radius: 2.,
+            material: red_rubber,
+        },
+        Sphere {
+            center: &Vec3f(1.5, -0.5, -18.),
+            radius: 3.,
+            material: red_rubber,
+        },
+        Sphere {
+            center: &Vec3f(7., 5., -18.),
+            radius: 4.,
+            material: ivory,
+        },
+    ];
+    render(&spheres, &mut framebuffer);
     let path = Path::new("./out.ppm");
     let file = File::create(&path).expect("Cannot create out.ppm");
     let mut stream = BufWriter::new(file);
     write!(stream, "P6\n{} {}\n255\n", WIDTH, HEIGHT).expect("Error writing to file");
-
     for i in 0..(WIDTH * HEIGHT) {
         let zero = 0.0f32;
         let one = 1.0f32;
