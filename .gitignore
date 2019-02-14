@@ -10,3 +10,4 @@ Cargo.lock
 **/*.rs.bk
 
 src/out.ppm
+out.ppm
