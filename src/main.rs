@@ -50,7 +50,8 @@ fn cast_ray(orig: &Vec3f, dir: &Vec3f, spheres: &[Sphere], lights: &[Light]) -> 
         diffuse_light_intensity += light.intensity * (0.0f32).max(&light_dir * &N);
     }
 
-    *material.diffuse_color * diffuse_light_intensity
+    // TODO - eliminate warning
+    &*material.diffuse_color * diffuse_light_intensity
 }
 
 fn render(spheres: &[Sphere], framebuffer: &mut [Vec3f], lights: &[Light]) {

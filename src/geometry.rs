@@ -43,11 +43,11 @@ impl ops::Mul<&Vec3f> for &Vec3f {
         x * _x + y * _y + z * _z
     }
 }
-impl ops::Mul<f32> for Vec3f {
+impl ops::Mul<f32> for &Vec3f {
     type Output = Vec3f;
     fn mul(self, _rhs: f32) -> Vec3f {
         let Vec3f(x, y, z) = self;
-        Vec3f(x * _rhs, y * _rhs, z * _rhs)
+        Vec3f(*x * _rhs, *y * _rhs, *z * _rhs)
     }
 }
 
