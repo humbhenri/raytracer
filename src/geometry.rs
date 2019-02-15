@@ -43,18 +43,24 @@ impl ops::Mul<&Vec3f> for &Vec3f {
         x * _x + y * _y + z * _z
     }
 }
-impl ops::Mul<f32> for &Vec3f {
+impl ops::Mul<f32> for Vec3f {
     type Output = Vec3f;
     fn mul(self, _rhs: f32) -> Vec3f {
         let Vec3f(x, y, z) = self;
-        Vec3f(*x * _rhs, *y * _rhs, *z * _rhs)
+        Vec3f(x * _rhs, y * _rhs, z * _rhs)
     }
 }
 
+#[derive(Debug, Clone, Copy)]
+pub struct Material<'a> {
+    pub diffuse_color: &'a Vec3f,
+}
+
+#[derive(Debug, Clone, Copy)]
 pub struct Sphere<'a> {
     pub center: &'a Vec3f,
     pub radius: f32,
-    pub material: &'a Vec3f,
+    pub material: Material<'a>,
 }
 
 impl<'a> Sphere<'a> {

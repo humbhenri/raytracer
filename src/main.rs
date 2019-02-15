@@ -1,4 +1,3 @@
-use std::fs::File;
 use std::io::BufWriter;
 use std::io::Write;
 use std::path::Path;
@@ -6,19 +5,21 @@ mod geometry;
 use geometry::Light;
 use geometry::Sphere;
 use geometry::Vec3f;
+use geometry::Material;
+use std::fs::File;
 
 const WIDTH: usize = 1024;
 const HEIGHT: usize = 768;
 const FOV: usize = (std::f32::consts::PI / 2.) as usize;
 const BACKGROUND: Vec3f = Vec3f(0.2, 0.7, 0.8);
 
-fn scene_intersect(
+fn scene_intersect<'a>(
     orig: &Vec3f,
     dir: &Vec3f,
-    spheres: &[Sphere],
+    spheres: &[Sphere<'a>],
     hit: &mut Vec3f,
     N: &mut Vec3f,
-    material: &mut Vec3f,
+    material: &'a mut Material<'a>,
 ) -> bool {
     let mut spheres_dist = std::f32::MAX;
     for sphere in spheres.iter() {
@@ -28,7 +29,7 @@ fn scene_intersect(
             *hit = &(orig + dir) * *dist_i;
             *N = &*hit - sphere.center;
             N.normalize();
-            *material = *sphere.material;
+            *material = sphere.material;
         }
     }
 
@@ -38,7 +39,7 @@ fn scene_intersect(
 fn cast_ray(orig: &Vec3f, dir: &Vec3f, spheres: &[Sphere], lights: &[Light]) -> Vec3f {
     let mut point: Vec3f = Vec3f(0., 0., 0.);
     let mut N: Vec3f = Vec3f(0., 0., 0.);
-    let mut material: Vec3f = Vec3f(0., 0., 0.);
+    let mut material: Material = Material{diffuse_color: &Vec3f(0., 0., 0.)};
     if !scene_intersect(&orig, &dir, &spheres, &mut point, &mut N, &mut material) {
         return BACKGROUND;
     }
@@ -48,7 +49,8 @@ fn cast_ray(orig: &Vec3f, dir: &Vec3f, spheres: &[Sphere], lights: &[Light]) -> 
         light_dir.normalize();
         diffuse_light_intensity += light.intensity * (0.0f32).max(&light_dir * &N);
     }
-    &material * diffuse_light_intensity
+
+    *material.diffuse_color * diffuse_light_intensity
 }
 
 fn render(spheres: &[Sphere], framebuffer: &mut [Vec3f], lights: &[Light]) {
@@ -68,8 +70,8 @@ fn render(spheres: &[Sphere], framebuffer: &mut [Vec3f], lights: &[Light]) {
 
 fn main() {
     let mut framebuffer = vec![Vec3f(0., 0., 0.); WIDTH * HEIGHT];
-    let ivory = &Vec3f(0.4, 0.4, 0.3);
-    let red_rubber = &Vec3f(0.3, 0.1, 0.1);
+    let ivory = Material{ diffuse_color: &Vec3f(0.4, 0.4, 0.3)};
+    let red_rubber = Material{ diffuse_color: &Vec3f(0.3, 0.1, 0.1)};
     let spheres = [
         Sphere {
             center: &Vec3f(-3., -0., -16.),
