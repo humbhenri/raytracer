@@ -5,8 +5,8 @@ mod geometry;
 use geometry::Light;
 use geometry::Material;
 use geometry::Sphere;
-use geometry::Vec3f;
 use geometry::Vec2f;
+use geometry::Vec3f;
 use std::fs::File;
 
 const WIDTH: usize = 1024;
@@ -28,7 +28,7 @@ fn scene_intersect<'a>(
     let mut spheres_dist = std::f32::MAX;
     let mut material: Material = Default::default();
     for sphere in spheres.iter() {
-        let mut dist_i: &mut f32 = &mut std::f32:: MAX;
+        let mut dist_i: &mut f32 = &mut std::f32::MAX;
         if sphere.ray_intersect(&orig, &dir, &mut dist_i) && *dist_i < spheres_dist {
             spheres_dist = *dist_i;
             *hit = (*orig + *dir) * *dist_i;
@@ -56,7 +56,30 @@ fn cast_ray(orig: &Vec3f, dir: &Vec3f, spheres: &[Sphere], lights: &[Light]) -> 
             for light in lights.iter() {
                 let mut light_dir = *light.position - point;
                 light_dir.normalize();
-                diffuse_light_intensity += light.intensity * (0.0f32).max(light_dir * N);
+                let light_distance = (*light.position - point).norm();
+                let ldn = light_dir * N;
+                let shadow_orig = if ldn < 0. {
+                    point - N * 1e-3
+                } else {
+                    point + N * 1e-3
+                };
+                let mut shadow_pt: Vec3f = Default::default();
+                let mut shadow_N: Vec3f = Default::default();
+                if scene_intersect(
+                    &shadow_orig,
+                    &light_dir,
+                    &spheres,
+                    &mut shadow_pt,
+                    &mut shadow_N,
+                )
+                .is_some()
+                    && (shadow_pt - shadow_orig).norm() < light_distance
+                {
+                    continue;
+                }
+
+                diffuse_light_intensity += light.intensity * (0.0f32).max(ldn);
+
                 specular_ligth_intensity += {
                     let a = reflect(&-light_dir, &N) * *dir;
                     let b = (0.0f32).max(-a);
@@ -65,8 +88,8 @@ fn cast_ray(orig: &Vec3f, dir: &Vec3f, spheres: &[Sphere], lights: &[Light]) -> 
                 }
             }
 
-            *material.diffuse_color * diffuse_light_intensity * material.albedo.0 + Vec3f(1., 1., 1.)
-                * specular_ligth_intensity * material.albedo.1
+            *material.diffuse_color * diffuse_light_intensity * material.albedo.0
+                + Vec3f(1., 1., 1.) * specular_ligth_intensity * material.albedo.1
         }
     }
 }
@@ -91,12 +114,12 @@ fn main() {
     let ivory = Material {
         albedo: &Vec2f(0.6, 0.3),
         diffuse_color: &Vec3f(0.4, 0.4, 0.3),
-        specular_exponent: 50.
+        specular_exponent: 50.,
     };
     let red_rubber = Material {
         albedo: &Vec2f(0.9, 0.1),
         diffuse_color: &Vec3f(0.3, 0.1, 0.1),
-        specular_exponent: 10.
+        specular_exponent: 10.,
     };
     let spheres = [
         Sphere {
@@ -120,16 +143,20 @@ fn main() {
             material: ivory,
         },
     ];
-    let lights = [Light {
-        position: &Vec3f(-20., 20., 20.),
-        intensity: 1.5,
-    }, Light {
-        position: &Vec3f(30., 50., -25.),
-        intensity: 1.8
-    }, Light{
-        position: &Vec3f(30., 20., 30.),
-        intensity: 1.7
-    }];
+    let lights = [
+        Light {
+            position: &Vec3f(-20., 20., 20.),
+            intensity: 1.5,
+        },
+        Light {
+            position: &Vec3f(30., 50., -25.),
+            intensity: 1.8,
+        },
+        Light {
+            position: &Vec3f(30., 20., 30.),
+            intensity: 1.7,
+        },
+    ];
     render(&spheres, &mut framebuffer, &lights);
     let path = Path::new("./out.ppm");
     let file = File::create(&path).expect("Cannot create out.ppm");
