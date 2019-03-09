@@ -5,7 +5,6 @@ mod geometry;
 use geometry::Light;
 use geometry::Material;
 use geometry::Sphere;
-use geometry::Vec2f;
 use geometry::Vec3f;
 use std::fs::File;
 
@@ -44,50 +43,63 @@ fn scene_intersect<'a>(
     }
 }
 
-fn cast_ray(orig: &Vec3f, dir: &Vec3f, spheres: &[Sphere], lights: &[Light]) -> Vec3f {
-    let mut point: Vec3f = Vec3f(0., 0., 0.);
-    let mut N: Vec3f = Vec3f(0., 0., 0.);
-    match scene_intersect(&orig, &dir, &spheres, &mut point, &mut N) {
-        None => BACKGROUND,
-        Some(material) => {
-            let mut diffuse_light_intensity = 0.;
-            let mut specular_ligth_intensity = 0.;
-            for light in lights.iter() {
-                let light_dir = *(*light.position - point).normalize();
-                let light_distance = (*light.position - point).norm();
-                let ldn = light_dir * N;
-                let shadow_orig = if ldn < 0. {
+fn cast_ray(orig: &Vec3f, dir: &Vec3f, spheres: &[Sphere], lights: &[Light], depth: u32) -> Vec3f {
+    if depth > 4 {
+        BACKGROUND
+    } else {
+        let mut point: Vec3f = Vec3f::new();
+        let mut N: Vec3f = Vec3f::new();
+        match scene_intersect(&orig, &dir, &spheres, &mut point, &mut N) {
+            None => BACKGROUND,
+            Some(material) => {
+                let mut diffuse_light_intensity = 0.;
+                let mut specular_ligth_intensity = 0.;
+                let reflect_dir = reflect(&dir, &N);
+                let reflect_orig = if reflect_dir * N < 0. {
                     point - N * 1e-3
                 } else {
                     point + N * 1e-3
                 };
-                let mut shadow_pt = Vec3f::new();
-                let mut shadow_N = Vec3f::new();
-                if scene_intersect(
-                    &shadow_orig,
-                    &light_dir,
-                    &spheres,
-                    &mut shadow_pt,
-                    &mut shadow_N,
-                )
-                .is_some()
-                    && (shadow_pt - shadow_orig).norm() < light_distance
-                {
-                    continue;
+                let reflect_color =
+                    cast_ray(&reflect_orig, &reflect_dir, &spheres, &lights, depth + 1);
+                for light in lights.iter() {
+                    let light_dir = *(*light.position - point).normalize();
+                    let light_distance = (*light.position - point).norm();
+                    let ldn = light_dir * N;
+                    let shadow_orig = if ldn < 0. {
+                        point - N * 1e-3
+                    } else {
+                        point + N * 1e-3
+                    };
+                    let mut shadow_pt = Vec3f::new();
+                    let mut shadow_N = Vec3f::new();
+                    if scene_intersect(
+                        &shadow_orig,
+                        &light_dir,
+                        &spheres,
+                        &mut shadow_pt,
+                        &mut shadow_N,
+                    )
+                    .is_some()
+                        && (shadow_pt - shadow_orig).norm() < light_distance
+                    {
+                        continue;
+                    }
+
+                    diffuse_light_intensity += light.intensity * (0.0f32).max(ldn);
+
+                    specular_ligth_intensity += {
+                        let a = reflect(&-light_dir, &N) * *dir;
+                        let b = (0.0f32).max(-a);
+                        let c = b.powf(material.specular_exponent);
+                        c * light.intensity
+                    }
                 }
 
-                diffuse_light_intensity += light.intensity * (0.0f32).max(ldn);
-
-                specular_ligth_intensity += {
-                    let a = reflect(&-light_dir, &N) * *dir;
-                    let b = (0.0f32).max(-a);
-                    let c = b.powf(material.specular_exponent);
-                    c * light.intensity
-                }
+                *material.diffuse_color * diffuse_light_intensity * material.albedo.0
+                    + Vec3f(1., 1., 1.) * specular_ligth_intensity * material.albedo.1
+                    + reflect_color * material.albedo.2
             }
-
-            *material.diffuse_color * diffuse_light_intensity * material.albedo.0
-                + Vec3f(1., 1., 1.) * specular_ligth_intensity * material.albedo.1
         }
     }
 }
@@ -102,7 +114,7 @@ fn render(spheres: &[Sphere], framebuffer: &mut [Vec3f], lights: &[Light]) {
             let y = -(2. * (j as f32 + 0.5) / HEIGHT as f32 - 1.) * (FOV as f32 / 2.).tan();
             let mut dir = Vec3f(x, y, -1.);
             dir.normalize();
-            framebuffer[i + j * WIDTH] = cast_ray(&Vec3f(0., 0., 0.), &dir, spheres, lights);
+            framebuffer[i + j * WIDTH] = cast_ray(&Vec3f(0., 0., 0.), &dir, spheres, lights, 0);
         }
     }
 }
@@ -110,14 +122,19 @@ fn render(spheres: &[Sphere], framebuffer: &mut [Vec3f], lights: &[Light]) {
 fn main() {
     let mut framebuffer = vec![Vec3f(0., 0., 0.); WIDTH * HEIGHT];
     let ivory = Material {
-        albedo: &Vec2f(0.6, 0.3),
+        albedo: &Vec3f(0.6, 0.3, 0.1),
         diffuse_color: &Vec3f(0.4, 0.4, 0.3),
         specular_exponent: 50.,
     };
     let red_rubber = Material {
-        albedo: &Vec2f(0.9, 0.1),
+        albedo: &Vec3f(0.9, 0.1, 0.),
         diffuse_color: &Vec3f(0.3, 0.1, 0.1),
         specular_exponent: 10.,
+    };
+    let mirror = Material {
+        albedo: &Vec3f(0., 10., 0.8),
+        diffuse_color: &Vec3f(1., 1., 1.),
+        specular_exponent: 1425.,
     };
     let spheres = [
         Sphere {
@@ -128,7 +145,7 @@ fn main() {
         Sphere {
             center: &Vec3f(-1.0, -1.5, -12.),
             radius: 2.,
-            material: red_rubber,
+            material: mirror,
         },
         Sphere {
             center: &Vec3f(1.5, -0.5, -18.),
@@ -138,7 +155,7 @@ fn main() {
         Sphere {
             center: &Vec3f(7., 5., -18.),
             radius: 4.,
-            material: ivory,
+            material: mirror,
         },
     ];
     let lights = [

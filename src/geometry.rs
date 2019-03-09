@@ -17,7 +17,7 @@ impl Vec3f {
         (self.0.powf(2.) + self.1.powf(2.) + self.2.powf(2.)).sqrt()
     }
 
-    pub fn normalize(&mut self) ->&Self {
+    pub fn normalize(&mut self) -> &Self {
         let norm = self.norm();
         let Vec3f(x, y, z) = self;
         *x = *x * (1. / norm);
@@ -77,7 +77,7 @@ impl ops::Neg for Vec3f {
 #[derive(Debug, Clone, Copy)]
 pub struct Material<'a> {
     pub diffuse_color: &'a Vec3f,
-    pub albedo: &'a Vec2f,
+    pub albedo: &'a Vec3f,
     pub specular_exponent: f32,
 }
 
@@ -85,7 +85,7 @@ impl<'a> Material<'a> {
     pub const fn new() -> Self {
         Material {
             diffuse_color: &Vec3f::new(),
-            albedo: &Vec2f::new(),
+            albedo: &Vec3f(1., 0., 0.),
             specular_exponent: 0.,
         }
     }
