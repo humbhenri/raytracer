@@ -6,17 +6,28 @@ pub struct Vec3f(pub f32, pub f32, pub f32);
 #[derive(Debug, Clone, Copy, Default)]
 pub struct Vec2f(pub f32, pub f32);
 
+impl Vec2f {
+    pub const fn new() -> Self {
+        Vec2f(0., 0.)
+    }
+}
+
 impl Vec3f {
     pub fn norm(&self) -> f32 {
         (self.0.powf(2.) + self.1.powf(2.) + self.2.powf(2.)).sqrt()
     }
 
-    pub fn normalize(&mut self) {
+    pub fn normalize(&mut self) ->&Self {
         let norm = self.norm();
         let Vec3f(x, y, z) = self;
-        *x = *x * (1./norm);
-        *y = *y * (1./norm);
-        *z = *z * (1./norm);
+        *x = *x * (1. / norm);
+        *y = *y * (1. / norm);
+        *z = *z * (1. / norm);
+        self
+    }
+
+    pub const fn new() -> Self {
+        Vec3f(0., 0., 0.)
     }
 }
 
@@ -70,12 +81,12 @@ pub struct Material<'a> {
     pub specular_exponent: f32,
 }
 
-impl<'a> Default for Material<'a> {
-    fn default() -> Self {
+impl<'a> Material<'a> {
+    pub const fn new() -> Self {
         Material {
-            diffuse_color: &Vec3f(0., 0., 0.),
-            albedo: &Vec2f(0., 0.),
-            specular_exponent: Default::default(),
+            diffuse_color: &Vec3f::new(),
+            albedo: &Vec2f::new(),
+            specular_exponent: 0.,
         }
     }
 }

@@ -26,14 +26,13 @@ fn scene_intersect<'a>(
     N: &mut Vec3f,
 ) -> Option<Material<'a>> {
     let mut spheres_dist = std::f32::MAX;
-    let mut material: Material = Default::default();
+    let mut material = Material::new();
     for sphere in spheres.iter() {
         let mut dist_i: &mut f32 = &mut std::f32::MAX;
         if sphere.ray_intersect(&orig, &dir, &mut dist_i) && *dist_i < spheres_dist {
             spheres_dist = *dist_i;
             *hit = (*orig + *dir) * *dist_i;
-            *N = *hit - *sphere.center;
-            N.normalize();
+            *N = *(*hit - *sphere.center).normalize();
             material = sphere.material;
         }
     }
@@ -54,8 +53,7 @@ fn cast_ray(orig: &Vec3f, dir: &Vec3f, spheres: &[Sphere], lights: &[Light]) -> 
             let mut diffuse_light_intensity = 0.;
             let mut specular_ligth_intensity = 0.;
             for light in lights.iter() {
-                let mut light_dir = *light.position - point;
-                light_dir.normalize();
+                let light_dir = *(*light.position - point).normalize();
                 let light_distance = (*light.position - point).norm();
                 let ldn = light_dir * N;
                 let shadow_orig = if ldn < 0. {
@@ -63,8 +61,8 @@ fn cast_ray(orig: &Vec3f, dir: &Vec3f, spheres: &[Sphere], lights: &[Light]) -> 
                 } else {
                     point + N * 1e-3
                 };
-                let mut shadow_pt: Vec3f = Default::default();
-                let mut shadow_N: Vec3f = Default::default();
+                let mut shadow_pt = Vec3f::new();
+                let mut shadow_N = Vec3f::new();
                 if scene_intersect(
                     &shadow_orig,
                     &light_dir,
