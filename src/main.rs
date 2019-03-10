@@ -31,7 +31,7 @@ fn scene_intersect(
         if sphere.ray_intersect(&orig, &dir, &mut dist_i) && *dist_i < spheres_dist {
             spheres_dist = *dist_i;
             *hit = (*orig + *dir) * *dist_i;
-            *N = *(*hit - sphere.center).normalize();
+            *N = (*hit - sphere.center).normalize();
             material = sphere.material;
         }
     }
@@ -54,7 +54,7 @@ fn cast_ray(orig: &Vec3f, dir: &Vec3f, spheres: &[Sphere], lights: &[Light], dep
             Some(material) => {
                 let mut diffuse_light_intensity = 0.;
                 let mut specular_ligth_intensity = 0.;
-                let reflect_dir = reflect(&dir, &N);
+                let reflect_dir = reflect(&dir, &N).normalize();
                 let reflect_orig = if reflect_dir * N < 0. {
                     point - N * 1e-3
                 } else {
@@ -63,7 +63,7 @@ fn cast_ray(orig: &Vec3f, dir: &Vec3f, spheres: &[Sphere], lights: &[Light], dep
                 let reflect_color =
                     cast_ray(&reflect_orig, &reflect_dir, &spheres, &lights, depth + 1);
                 for light in lights.iter() {
-                    let light_dir = *(light.position - point).normalize();
+                    let light_dir = (light.position - point).normalize();
                     let light_distance = (light.position - point).norm();
                     let ldn = light_dir * N;
                     let shadow_orig = if ldn < 0. {
@@ -112,15 +112,14 @@ fn render(spheres: &[Sphere], framebuffer: &mut [Vec3f], lights: &[Light]) {
                 * (WIDTH as f32)
                 / (HEIGHT as f32);
             let y = -(2. * (j as f32 + 0.5) / HEIGHT as f32 - 1.) * (FOV as f32 / 2.).tan();
-            let mut dir = Vec3f(x, y, -1.);
-            dir.normalize();
+            let dir = Vec3f(x, y, -1.).normalize();
             framebuffer[i + j * WIDTH] = cast_ray(&Vec3f(0., 0., 0.), &dir, spheres, lights, 0);
         }
     }
 }
 
 fn main() {
-    let mut framebuffer = vec![Vec3f(0., 0., 0.); WIDTH * HEIGHT];
+    let mut framebuffer = vec![Vec3f::new(); WIDTH * HEIGHT];
     let ivory = Material {
         albedo: Vec3f(0.6, 0.3, 0.1),
         diffuse_color: Vec3f(0.4, 0.4, 0.3),

@@ -17,13 +17,13 @@ impl Vec3f {
         (self.0.powf(2.) + self.1.powf(2.) + self.2.powf(2.)).sqrt()
     }
 
-    pub fn normalize(&mut self) -> &Self {
+    pub fn normalize(&mut self) -> Self {
         let norm = self.norm();
         let Vec3f(x, y, z) = self;
         *x = *x * (1. / norm);
         *y = *y * (1. / norm);
         *z = *z * (1. / norm);
-        self
+        *self
     }
 
     pub const fn new() -> Self {
