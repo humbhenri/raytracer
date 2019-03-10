@@ -75,32 +75,32 @@ impl ops::Neg for Vec3f {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct Material<'a> {
-    pub diffuse_color: &'a Vec3f,
-    pub albedo: &'a Vec3f,
+pub struct Material {
+    pub diffuse_color: Vec3f,
+    pub albedo: Vec3f,
     pub specular_exponent: f32,
 }
 
-impl<'a> Material<'a> {
+impl Material {
     pub const fn new() -> Self {
         Material {
-            diffuse_color: &Vec3f::new(),
-            albedo: &Vec3f(1., 0., 0.),
+            diffuse_color: Vec3f::new(),
+            albedo: Vec3f(1., 0., 0.),
             specular_exponent: 0.,
         }
     }
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct Sphere<'a> {
-    pub center: &'a Vec3f,
+pub struct Sphere {
+    pub center: Vec3f,
     pub radius: f32,
-    pub material: Material<'a>,
+    pub material: Material,
 }
 
-impl<'a> Sphere<'a> {
-    pub fn ray_intersect(&self, orig: &Vec3f, dir: &Vec3f, t0: &'a mut f32) -> bool {
-        let L = *self.center - *orig;
+impl Sphere {
+    pub fn ray_intersect(&self, orig: &Vec3f, dir: &Vec3f, t0: &mut f32) -> bool {
+        let L = self.center - *orig;
         let tca = L * *dir;
         let d2 = L * L - tca.powi(2);
         if d2 > self.radius.powi(2) {
@@ -115,7 +115,7 @@ impl<'a> Sphere<'a> {
     }
 }
 
-pub struct Light<'a> {
-    pub position: &'a Vec3f,
+pub struct Light {
+    pub position: Vec3f,
     pub intensity: f32,
 }

@@ -17,13 +17,13 @@ fn reflect(I: &Vec3f, N: &Vec3f) -> Vec3f {
     *I - *N * 2. * (*I * *N)
 }
 
-fn scene_intersect<'a>(
+fn scene_intersect(
     orig: &Vec3f,
     dir: &Vec3f,
-    spheres: &[Sphere<'a>],
+    spheres: &[Sphere],
     hit: &mut Vec3f,
     N: &mut Vec3f,
-) -> Option<Material<'a>> {
+) -> Option<Material> {
     let mut spheres_dist = std::f32::MAX;
     let mut material = Material::new();
     for sphere in spheres.iter() {
@@ -31,7 +31,7 @@ fn scene_intersect<'a>(
         if sphere.ray_intersect(&orig, &dir, &mut dist_i) && *dist_i < spheres_dist {
             spheres_dist = *dist_i;
             *hit = (*orig + *dir) * *dist_i;
-            *N = *(*hit - *sphere.center).normalize();
+            *N = *(*hit - sphere.center).normalize();
             material = sphere.material;
         }
     }
@@ -63,8 +63,8 @@ fn cast_ray(orig: &Vec3f, dir: &Vec3f, spheres: &[Sphere], lights: &[Light], dep
                 let reflect_color =
                     cast_ray(&reflect_orig, &reflect_dir, &spheres, &lights, depth + 1);
                 for light in lights.iter() {
-                    let light_dir = *(*light.position - point).normalize();
-                    let light_distance = (*light.position - point).norm();
+                    let light_dir = *(light.position - point).normalize();
+                    let light_distance = (light.position - point).norm();
                     let ldn = light_dir * N;
                     let shadow_orig = if ldn < 0. {
                         point - N * 1e-3
@@ -96,7 +96,7 @@ fn cast_ray(orig: &Vec3f, dir: &Vec3f, spheres: &[Sphere], lights: &[Light], dep
                     }
                 }
 
-                *material.diffuse_color * diffuse_light_intensity * material.albedo.0
+                material.diffuse_color * diffuse_light_intensity * material.albedo.0
                     + Vec3f(1., 1., 1.) * specular_ligth_intensity * material.albedo.1
                     + reflect_color * material.albedo.2
             }
@@ -122,53 +122,53 @@ fn render(spheres: &[Sphere], framebuffer: &mut [Vec3f], lights: &[Light]) {
 fn main() {
     let mut framebuffer = vec![Vec3f(0., 0., 0.); WIDTH * HEIGHT];
     let ivory = Material {
-        albedo: &Vec3f(0.6, 0.3, 0.1),
-        diffuse_color: &Vec3f(0.4, 0.4, 0.3),
+        albedo: Vec3f(0.6, 0.3, 0.1),
+        diffuse_color: Vec3f(0.4, 0.4, 0.3),
         specular_exponent: 50.,
     };
     let red_rubber = Material {
-        albedo: &Vec3f(0.9, 0.1, 0.),
-        diffuse_color: &Vec3f(0.3, 0.1, 0.1),
+        albedo: Vec3f(0.9, 0.1, 0.),
+        diffuse_color: Vec3f(0.3, 0.1, 0.1),
         specular_exponent: 10.,
     };
     let mirror = Material {
-        albedo: &Vec3f(0., 10., 0.8),
-        diffuse_color: &Vec3f(1., 1., 1.),
+        albedo: Vec3f(0., 10., 0.8),
+        diffuse_color: Vec3f(1., 1., 1.),
         specular_exponent: 1425.,
     };
     let spheres = [
         Sphere {
-            center: &Vec3f(-3., -0., -16.),
+            center: Vec3f(-3., -0., -16.),
             radius: 2.,
             material: ivory,
         },
         Sphere {
-            center: &Vec3f(-1.0, -1.5, -12.),
+            center: Vec3f(-1.0, -1.5, -12.),
             radius: 2.,
             material: mirror,
         },
         Sphere {
-            center: &Vec3f(1.5, -0.5, -18.),
+            center: Vec3f(1.5, -0.5, -18.),
             radius: 3.,
             material: red_rubber,
         },
         Sphere {
-            center: &Vec3f(7., 5., -18.),
+            center: Vec3f(7., 5., -18.),
             radius: 4.,
             material: mirror,
         },
     ];
     let lights = [
         Light {
-            position: &Vec3f(-20., 20., 20.),
+            position: Vec3f(-20., 20., 20.),
             intensity: 1.5,
         },
         Light {
-            position: &Vec3f(30., 50., -25.),
+            position: Vec3f(30., 50., -25.),
             intensity: 1.8,
         },
         Light {
-            position: &Vec3f(30., 20., 30.),
+            position: Vec3f(30., 20., 30.),
             intensity: 1.7,
         },
     ];
