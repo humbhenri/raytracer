@@ -56,7 +56,24 @@ fn scene_intersect(
         }
     }
 
-    if spheres_dist < 1000. {
+    let mut checkerboard_dist = std::f32::MAX;
+    if dir.1.abs() > 1e-3 {
+        let d = -(orig.1 + 4.)/dir.1;
+        let pt = *orig + * dir*d;
+        if d>0. && pt.0.abs() < 10. && pt.2 < -10. && pt.2 > -30. && d < spheres_dist {
+            checkerboard_dist = d;
+            *hit = pt;
+            *N = Vec3f(0., 1., 0.);
+            material.diffuse_color = if ((0.5*hit.0+1000.) as i32) + ((0.5*hit.2) as i32) & 1 == 1 {
+                Vec3f(1., 1., 1.)
+            } else {
+                Vec3f(1., 0.7, 0.3)
+            };
+            material.diffuse_color = material.diffuse_color*0.3;
+        }
+    }
+
+    if spheres_dist.min(checkerboard_dist) < 1000. {
         Some(material)
     } else {
         None
