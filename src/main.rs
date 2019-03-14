@@ -6,6 +6,7 @@ use geometry::Light;
 use geometry::Material;
 use geometry::Sphere;
 use geometry::Vec3f;
+use geometry::Vec4f;
 use std::fs::File;
 
 const WIDTH: usize = 1024;
@@ -15,6 +16,25 @@ const BACKGROUND: Vec3f = Vec3f(0.2, 0.7, 0.8);
 
 fn reflect(I: &Vec3f, N: &Vec3f) -> Vec3f {
     *I - *N * 2. * (*I * *N)
+}
+
+fn refract(I: &Vec3f, N: &Vec3f, refractive_index: f32) -> Vec3f {
+    let mut cosi = -(-1.0f32).max(1.0f32.min(*I * *N));
+    let mut etai = 1.;
+    let mut etat = refractive_index;
+    let mut n = *N;
+    if cosi < 0. {
+        cosi = -cosi;
+        std::mem::swap(&mut etai, &mut etat);
+        n = -n;
+    }
+    let eta = etai / etat;
+    let k = 1. - eta * eta * (1. - cosi * cosi);
+    if k < 0. {
+        Vec3f::new()
+    } else {
+        *I * eta + n * (eta * cosi - k.sqrt())
+    }
 }
 
 fn scene_intersect(
@@ -55,13 +75,22 @@ fn cast_ray(orig: &Vec3f, dir: &Vec3f, spheres: &[Sphere], lights: &[Light], dep
                 let mut diffuse_light_intensity = 0.;
                 let mut specular_ligth_intensity = 0.;
                 let reflect_dir = reflect(&dir, &N).normalize();
+                let mut refract_dir = refract(&dir, &N, material.refractive_index);
+                refract_dir.normalize();
                 let reflect_orig = if reflect_dir * N < 0. {
+                    point - N * 1e-3
+                } else {
+                    point + N * 1e-3
+                };
+                let refract_orig = if refract_dir * N < 0. {
                     point - N * 1e-3
                 } else {
                     point + N * 1e-3
                 };
                 let reflect_color =
                     cast_ray(&reflect_orig, &reflect_dir, &spheres, &lights, depth + 1);
+                let refract_color =
+                    cast_ray(&refract_orig, &refract_dir, &spheres, &lights, depth + 1);
                 for light in lights.iter() {
                     let light_dir = (light.position - point).normalize();
                     let light_distance = (light.position - point).norm();
@@ -99,6 +128,7 @@ fn cast_ray(orig: &Vec3f, dir: &Vec3f, spheres: &[Sphere], lights: &[Light], dep
                 material.diffuse_color * diffuse_light_intensity * material.albedo.0
                     + Vec3f(1., 1., 1.) * specular_ligth_intensity * material.albedo.1
                     + reflect_color * material.albedo.2
+                    + refract_color * material.albedo.3
             }
         }
     }
@@ -121,19 +151,28 @@ fn render(spheres: &[Sphere], framebuffer: &mut [Vec3f], lights: &[Light]) {
 fn main() {
     let mut framebuffer = vec![Vec3f::new(); WIDTH * HEIGHT];
     let ivory = Material {
-        albedo: Vec3f(0.6, 0.3, 0.1),
+        albedo: Vec4f(0.6, 0.3, 0.1, 0.),
         diffuse_color: Vec3f(0.4, 0.4, 0.3),
         specular_exponent: 50.,
+        refractive_index: 1.,
+    };
+    let glass = Material {
+        albedo: Vec4f(0., 0.5, 0.1, 0.8),
+        diffuse_color: Vec3f(0.6, 0.7, 0.8),
+        specular_exponent: 125.,
+        refractive_index: 1.5,
     };
     let red_rubber = Material {
-        albedo: Vec3f(0.9, 0.1, 0.),
+        albedo: Vec4f(0.9, 0.1, 0., 0.),
         diffuse_color: Vec3f(0.3, 0.1, 0.1),
         specular_exponent: 10.,
+        refractive_index: 1.,
     };
     let mirror = Material {
-        albedo: Vec3f(0., 10., 0.8),
+        albedo: Vec4f(0., 10., 0.8, 0.),
         diffuse_color: Vec3f(1., 1., 1.),
         specular_exponent: 1425.,
+        refractive_index: 1.,
     };
     let spheres = [
         Sphere {
@@ -144,7 +183,7 @@ fn main() {
         Sphere {
             center: Vec3f(-1.0, -1.5, -12.),
             radius: 2.,
-            material: mirror,
+            material: glass,
         },
         Sphere {
             center: Vec3f(1.5, -0.5, -18.),

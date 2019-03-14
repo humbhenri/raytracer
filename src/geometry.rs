@@ -1,10 +1,13 @@
 use std::ops;
 
 #[derive(Debug, Clone, Copy, Default)]
+pub struct Vec2f(pub f32, pub f32);
+
+#[derive(Debug, Clone, Copy, Default)]
 pub struct Vec3f(pub f32, pub f32, pub f32);
 
 #[derive(Debug, Clone, Copy, Default)]
-pub struct Vec2f(pub f32, pub f32);
+pub struct Vec4f(pub f32, pub f32, pub f32, pub f32);
 
 impl Vec2f {
     pub const fn new() -> Self {
@@ -28,6 +31,12 @@ impl Vec3f {
 
     pub const fn new() -> Self {
         Vec3f(0., 0., 0.)
+    }
+}
+
+impl Vec4f {
+    pub const fn new() -> Self {
+        Vec4f(0., 0., 0., 0.)
     }
 }
 
@@ -76,17 +85,19 @@ impl ops::Neg for Vec3f {
 
 #[derive(Debug, Clone, Copy)]
 pub struct Material {
+    pub albedo: Vec4f,
     pub diffuse_color: Vec3f,
-    pub albedo: Vec3f,
     pub specular_exponent: f32,
+    pub refractive_index: f32,
 }
 
 impl Material {
     pub const fn new() -> Self {
         Material {
             diffuse_color: Vec3f::new(),
-            albedo: Vec3f(1., 0., 0.),
+            albedo: Vec4f(1., 0., 0., 0.),
             specular_exponent: 0.,
+            refractive_index: 1.,
         }
     }
 }
